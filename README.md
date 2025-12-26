@@ -62,12 +62,20 @@ The script will prompt you for the credentials if they are not set in your envir
 
 ## Usage
 
-Run the updated v2 script:
+### Version 2 (Standard)
+Run the v2 script for full company details (Name, Email, Phone, Address):
 ```bash
 python web_search_agent_v2.py
 ```
 
-The script will prompt you for:
+### Version 3 (Simplified)
+Run the v3 script for a simplified report (Website & Email Only). 
+**Note**: This version is more lenient and will include website links even if no contact info is found or if scraping fails.
+```bash
+python web_search_agent_v3.py
+```
+
+The scripts will prompt you for:
 1. **Search Keywords**: What to search for (e.g., "restaurants", "law firms", "plumbers")
 2. **Geographic Location**: Where to search (e.g., "New York", "San Francisco CA", "Tokyo Japan")
 3. **Maximum Number of Entries**: How many results to process (default: 10)
@@ -81,23 +89,23 @@ Enter maximum number of entries: 20
 
 ## Output
 
-The script generates an HTML file named `search_results_[timestamp].html` containing:
-- Search parameters used
-- Table with unique, verified company information
-- Clickable links to company websites
-- Formatted, professional layout
+The script generates an HTML file named `search_results_[timestamp].html`.
 
-## How It Works (v2)
+- **v2 Output**: Detailed table with Company Name, Email, Phone, Address, Website.
+- **v3 Output**: Simplified table with **Website** and **Email** only.
+
+## How It Works
 
 1. **Search Phase**: Uses Google Custom Search API to find relevant websites.
 2. **Scraping & Cleaning Phase**: 
    - Visits each result URL.
    - **Encoding Fix**: Detects charset to prevent mojibake.
-   - **Translation**: Translates name/address to English if needed.
+   - **Translation**: Translates name/address to English if needed (v2).
    - **Extraction**: EXTRACTS Name, Email, Phone, Address, JSON-LD data.
 3. **Filtering Phase**:
    - **Blocklist**: Drops known non-company sites (Social Media, Directories).
-   - **Validation**: Drops records with no contact info.
+   - **Validation (v2)**: Drops records with no contact info.
+   - **Validation (v3)**: Keeps records as long as they have a valid URL (relaxed filtering).
    - **Deduplication**: Keeps only one result per unique domain.
 4. **Output Phase**: Generates a clean HTML report.
 
