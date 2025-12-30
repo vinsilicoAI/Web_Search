@@ -18,7 +18,8 @@ A Python-based web search agent that uses Google Custom Search API to find compa
   - Detects website encoding to fix "REPLACEMENT CHARACTER" issues.
   - Translates foreign-language company names and addresses to English (requires `deep-translator`).
 - **Geographic Filtering**: Search results filtered by location.
-- **HTML Output**: Beautiful, formatted HTML report with all results.
+- **Geographic Filtering**: Search results filtered by location.
+- **Dual Output**: Generates both **HTML** (beautiful report) and **TSV** (tab-delimited, Excel/Sheets compatible) files.
 
 ## Prerequisites
 
@@ -79,6 +80,7 @@ The scripts will prompt you for:
 1. **Search Keywords**: What to search for (e.g., "restaurants", "law firms", "plumbers")
 2. **Geographic Location**: Where to search (e.g., "New York", "San Francisco CA", "Tokyo Japan")
 3. **Maximum Number of Entries**: How many results to process (default: 10)
+4. **Output Filename**: (v3 ONLY) Custom name for the output files (optional).
 
 ### Example
 ```
@@ -89,7 +91,8 @@ Enter maximum number of entries: 20
 
 ## Output
 
-The script generates an HTML file named `search_results_[timestamp].html`.
+The script generates files named `[filename].html` and `[filename].tsv`.
+If no filename is provided, it uses `search_results_[timestamp]`.
 
 - **v2 Output**: Detailed table with Company Name, Email, Phone, Address, Website.
 - **v3 Output**: Simplified table with **Website** and **Email** only.

@@ -17,6 +17,8 @@ from html import escape
 from typing import List, Dict, Optional, Any
 from bs4 import BeautifulSoup
 import time
+import io
+import csv
 
 
 import unicodedata
@@ -331,6 +333,35 @@ class WebSearchAgent:
                 
         return filtered
     
+    def calculate_relevance(self, item: Dict, keywords: str) -> int:
+        """
+        Calculate a relevance score based on keyword matches
+        
+        Args:
+            item: Search result item (title, snippet)
+            keywords: Search keywords
+            
+        Returns:
+            int: Relevance score
+        """
+        score = 0
+        text = (item.get('title', '') + ' ' + item.get('snippet', '')).lower()
+        keyword_terms = keywords.lower().split()
+        
+        # 1. Exact Phrase Match
+        if keywords.lower() in text:
+            score += 10
+            
+        # 2. Individual Term Matches
+        for term in keyword_terms:
+            if term in text:
+                score += 3
+                # Bonus for appearing in title
+                if term in item.get('title', '').lower():
+                    score += 2
+        
+        return score
+
     def search_and_extract(self, keywords: str, location: str, max_entries: int = 10) -> List[Dict]:
         """
         Main method to search and extract company information
@@ -365,6 +396,9 @@ class WebSearchAgent:
             if not info['address']:
                 info['address'] = self.extract_address(result['snippet'])
             
+            # Calculate Relevance Score
+            info['relevance_score'] = self.calculate_relevance(result, keywords)
+            
             company_info_list.append(info)
         
         # Apply filtering
@@ -395,6 +429,10 @@ class WebSearchAgent:
                  if url not in seen_domains:
                     seen_domains.add(url)
                     unique_list.append(record)
+        
+        # Sort by Relevance Score
+        print("Sorting results by relevance...")
+        unique_list.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
 
         print(f"Remaining after filtering and deduplication: {len(unique_list)}")
         
@@ -535,6 +573,30 @@ class WebSearchAgent:
         return html
 
 
+    def generate_tsv(self, company_info_list: List[Dict]) -> str:
+        """
+        Generate TSV output from company information.
+        
+        Args:
+            company_info_list: List of company information dictionaries
+            
+        Returns:
+            TSV string
+        """
+        output = io.StringIO()
+        fieldnames = ['Website', 'Email']
+        writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter='\t')
+        
+        writer.writeheader()
+        for info in company_info_list:
+            writer.writerow({
+                'Website': info.get('url', ''),
+                'Email': info.get('email') or 'N/A'
+            })
+            
+        return output.getvalue()
+
+
 def main():
     """Main function to run the web search agent"""
     # Get API credentials from environment or user input
@@ -562,6 +624,9 @@ def main():
     if not keywords:
         print("Error: Keywords are required", file=sys.stderr)
         sys.exit(1)
+
+    # Get user input for filename
+    output_filename = input("Enter output filename (without extension, press Enter for default): ").strip()
     
     # Create agent and search
     agent = WebSearchAgent(api_key, search_engine_id)
@@ -571,15 +636,35 @@ def main():
         print("\nNo valid records found after filtering.")
         sys.exit(0)
 
+    # Generate timestamp for default filename
+    timestamp = int(time.time())
+    
+    if output_filename:
+        # Sanitize filename (basic)
+        output_filename = "".join(c for c in output_filename if c.isalnum() or c in (' ', '-', '_')).strip()
+        base_filename = output_filename
+    else:
+        base_filename = f"search_results_{timestamp}"
+    
     # Generate HTML
     html_output = agent.generate_html(company_info, keywords, location)
     
-    # Save to file
-    output_file = f"search_results_{int(time.time())}.html"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    # Save to HTML file
+    html_file = f"{base_filename}.html"
+    with open(html_file, 'w', encoding='utf-8') as f:
         f.write(html_output)
     
-    print(f"\nResults saved to: {output_file}")
+    # Generate TSV
+    tsv_output = agent.generate_tsv(company_info)
+    
+    # Save to TSV file
+    tsv_file = f"{base_filename}.tsv"
+    with open(tsv_file, 'w', encoding='utf-8') as f:
+        f.write(tsv_output)
+    
+    print(f"\nResults saved to:")
+    print(f"- HTML: {html_file}")
+    print(f"- TSV:  {tsv_file}")
     print(f"Found {len(company_info)} companies")
 
 
