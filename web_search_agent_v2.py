@@ -15,6 +15,8 @@ from html import escape
 from typing import List, Dict, Optional, Any
 from bs4 import BeautifulSoup
 import time
+import io
+import csv
 
 
 import unicodedata
@@ -556,6 +558,33 @@ class WebSearchAgent:
         return html
 
 
+    def generate_tsv(self, company_info_list: List[Dict]) -> str:
+        """
+        Generate TSV output from company information.
+        
+        Args:
+            company_info_list: List of company information dictionaries
+            
+        Returns:
+            TSV string
+        """
+        output = io.StringIO()
+        fieldnames = ['Company Name', 'Email', 'Phone', 'Address', 'Website']
+        writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter='\t')
+        
+        writer.writeheader()
+        for info in company_info_list:
+            writer.writerow({
+                'Company Name': info.get('company_name', 'N/A'),
+                'Email': info.get('email', 'N/A'),
+                'Phone': info.get('phone', 'N/A'),
+                'Address': info.get('address', 'N/A'),
+                'Website': info.get('url', '')
+            })
+            
+        return output.getvalue()
+
+
 def main():
     """Main function to run the web search agent"""
     # Get API credentials from environment or user input
@@ -583,6 +612,9 @@ def main():
     if not keywords:
         print("Error: Keywords are required", file=sys.stderr)
         sys.exit(1)
+
+    # Get user input for filename
+    output_filename = input("Enter output filename (without extension, press Enter for default): ").strip()
     
     # Create agent and search
     agent = WebSearchAgent(api_key, search_engine_id)
@@ -592,15 +624,35 @@ def main():
         print("\nNo valid records found after filtering.")
         sys.exit(0)
 
+    # Generate timestamp for default filename
+    timestamp = int(time.time())
+    
+    if output_filename:
+        # Sanitize filename (basic)
+        output_filename = "".join(c for c in output_filename if c.isalnum() or c in (' ', '-', '_')).strip()
+        base_filename = output_filename
+    else:
+        base_filename = f"search_results_{timestamp}"
+
     # Generate HTML
     html_output = agent.generate_html(company_info, keywords, location)
     
-    # Save to file
-    output_file = f"search_results_{int(time.time())}.html"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    # Save to HTML file
+    html_file = f"{base_filename}.html"
+    with open(html_file, 'w', encoding='utf-8') as f:
         f.write(html_output)
+        
+    # Generate TSV
+    tsv_output = agent.generate_tsv(company_info)
     
-    print(f"\nResults saved to: {output_file}")
+    # Save to TSV file
+    tsv_file = f"{base_filename}.tsv"
+    with open(tsv_file, 'w', encoding='utf-8') as f:
+        f.write(tsv_output)
+    
+    print(f"\nResults saved to:")
+    print(f"- HTML: {html_file}")
+    print(f"- TSV:  {tsv_file}")
     print(f"Found {len(company_info)} companies")
 
 
